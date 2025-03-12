@@ -1,16 +1,8 @@
+// src/app/layout.tsx
+// This file is used to wrap the entire application with a layout component. This is useful for adding global styles, context providers, or other components that should be rendered on every page.
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import AuthContext from '@/app/context/AuthContext';
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -19,16 +11,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className="antialiased" suppressHydrationWarning>
+        <AuthContext>
+          {children}
+        </AuthContext>
       </body>
     </html>
-  );
+  )
 }
