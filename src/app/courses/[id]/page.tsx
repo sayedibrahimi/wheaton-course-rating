@@ -8,6 +8,8 @@ import { useSession } from 'next-auth/react';
 import { useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
+import AuthModal from '@/components/AuthModal';
+
 
 // Define types
 interface Course {
@@ -58,13 +60,11 @@ export default function CourseDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userHasReviewed, setUserHasReviewed] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalAction, setAuthModalAction] = useState<'review' | 'helpful' | 'report'>('review');
+  const [currentReviewId, setCurrentReviewId] = useState<string | null>(null);
 
-  // Redirect if not logged in
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-       router.push(`/auth/signin?callbackUrl=/courses/${courseId}`);
-    }
-  }, [status, courseId, router]);
+  console.log(currentReviewId);
 
   // Fetch course and reviews
   useEffect(() => {
@@ -135,11 +135,70 @@ export default function CourseDetailsPage() {
   // Handle Write Review button click
   const handleWriteReview = () => {
     if (status === 'unauthenticated') {
-      router.push(`/auth/signin?callbackUrl=/courses/${courseId}`);
+      setAuthModalAction('review');
+      setShowAuthModal(true);
     } else {
       router.push(`/courses/${courseId}/review`);
     }
   };
+
+  // Add a new function to handle helpful button clicks
+  const handleHelpfulClick = (reviewId: string) => {
+  if (status === 'unauthenticated') {
+    setAuthModalAction('helpful');
+    setCurrentReviewId(reviewId);
+    setShowAuthModal(true);
+  } else {
+    // Make API call to mark review as helpful
+    fetch(`/api/reviews/${reviewId}/helpful`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(response => {
+        if (response.ok) {
+          return response.json();
+        }
+        throw new Error('Failed to mark as helpful');
+      })
+      .then(data => {
+        // Refresh reviews to show updated helpful count
+        const updatedReviews = [...reviews];
+        const index = updatedReviews.findIndex(review => review._id === reviewId);
+        
+        if (index !== -1) {
+          updatedReviews[index].helpfulCount = data.helpful 
+            ? updatedReviews[index].helpfulCount + 1 
+            : updatedReviews[index].helpfulCount - 1;
+          setReviews(updatedReviews);
+        }
+      })
+      .catch(error => {
+        console.error('Error marking review as helpful:', error);
+      });
+  }
+};
+
+// Add a report function
+  const handleReportReview = (reviewId: string) => {
+  if (status === 'unauthenticated') {
+    setAuthModalAction('report');
+    setCurrentReviewId(reviewId);
+    setShowAuthModal(true);
+  } else {
+    // For now, just display a modal or alert
+    // In production, you'd open a modal with report options
+    alert('Thank you for reporting this review. Our moderators will review it.');
+    
+    // In a real implementation, you'd make an API call like:
+    // fetch(`/api/reviews/${reviewId}/report`, {
+    //   method: 'POST',
+    //   headers: { 'Content-Type': 'application/json' },
+    //   body: JSON.stringify({ reason: 'inappropriate' })
+    // });
+  }
+};
 
   // Loading state
   if (loading) {
@@ -335,15 +394,20 @@ export default function CourseDetailsPage() {
                   </div>
                 )}
                 
-                <button
-                  className="text-gray-500 text-sm flex items-center hover:text-blue-600"
-                  onClick={() => {
-                    // We'd implement this functionality with API calls
-                    alert('Helpful button clicked - would be implemented with API call');
-                  }}
-                >
-                  👍 Helpful ({review.helpfulCount})
-                </button>
+                <div className="flex gap-4">
+                  <button 
+                    className="text-gray-500 text-sm flex items-center hover:text-blue-600"
+                    onClick={() => handleHelpfulClick(review._id)}
+                  > 
+                    👍 Helpful ({review.helpfulCount})</button>
+  
+                  <button
+                    className="text-gray-500 text-sm flex items-center hover:text-red-600"
+                    onClick={() => handleReportReview(review._id)}
+                  >
+                    🚩 Report
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -363,6 +427,14 @@ export default function CourseDetailsPage() {
           </div>
         )}
       </div>
+      {showAuthModal && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          callbackUrl={`/courses/${courseId}`}
+          action={authModalAction}
+        />
+      )}
     </div>
   );
 }
