@@ -1,6 +1,6 @@
 // src/middleware.ts
 // Purpose: Middleware to protect routes from unauthorized access
-// Description: This middleware checks if a valid token is present in the request. If no token is found, the user is redirected to the login page. The middleware is applied to all routes that require authentication, such as the profile page and the course creation form.
+// Description: This middleware checks if the user is authenticated by verifying the JWT token using NextAuth's getToken function. If the token is not present or invalid, the middleware redirects the user to the sign-in page. The middleware is applied to protected API routes and pages that require authentication, such as creating a review, marking a review as helpful, or reporting a review.
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
@@ -31,12 +31,15 @@ export async function middleware(request: NextRequest) {
 // Apply middleware only to protected routes
 export const config = {
   matcher: [
-    "/api/reviews/:path",
-    "/api/courses/:path",
-    "/api/users/:path",
-    "/courses",
-    "/courses/:path",
+    // Protected API routes
+    "/api/reviews/POST",       // Only POST requests to reviews need auth
+    "/api/reviews/helpful/:path*", // New helpful endpoints will need auth
+    "/api/reviews/report/:path*",  // New report endpoints will need auth
+    "/api/users/:path*",       // User-related operations require auth
+    
+    // Protected pages
     "/profile",
     "/profile/:path*",
+    "/courses/:id/review",     // Review creation pages
   ],
 };
